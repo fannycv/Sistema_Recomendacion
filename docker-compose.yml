@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  node_app:
+    container_name: app-node
+    build:
+      context: ./result
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    networks:
+      - my_network
+    depends_on:
+      - postgres
+    links:
+      - postgres
+      - redis
+    environment:
+      NODE_ENV: development
+      PGHOST: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: recomendaciones_libros 
+
+  python_app:
+    container_name: python
+    build:
+      context: ./vote
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    networks:
+      - my_network
+    environment:
+      PGHOST: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: recomendaciones_libros 
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+    links:
+      - postgres
+      - redis
+
+  dotnet_worker:
+    container_name: app-net
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    networks:
+      - my_network
+
+  redis:
+    image: redis
+    container_name: my-redis-container
+    networks:
+      - my_network
+    ports:
+      - "6379:6379"
+
+  postgres:
+    image: postgres
+    container_name: mi_postgres_container
+    environment:
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: recomendaciones_libros 
+    networks:
+      - my_network
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./sql:/docker-entrypoint-initdb.d 
+
+networks:
+  my_network:
+    driver: bridge
